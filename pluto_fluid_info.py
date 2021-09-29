@@ -1,19 +1,6 @@
 import numpy as np
 
 
-class Field(object):
-  __slots__ = [
-    'name',
-    'function',
-    'code_unit',
-    'astro_unit',
-    'alias'
-  ]
-
-  def __init__(self):
-    pass
-
-
 def setup(cls):
   cls.setup_derived_field()
   return cls

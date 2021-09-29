@@ -222,7 +222,14 @@ class Snapshot(Dataset):
     code_length = u.def_unit('unit_length', represents=self.code_unit['code_length'])
     code_density = u.def_unit('unit_density', represents=self.code_unit['code_density'])
     code_velocity = u.def_unit('unit_velocity', represents=self.code_unit['code_velocity'])
-    u.add_enabled_units(code_length, code_density, code_velocity)
+
+    for key in self.coord.keys():
+      if 'x1' in key:
+        self.coord[key] = self.coord[key] * self.grids.code_unit[0]
+      elif 'x2' in key:
+        self.coord[key] = self.coord[key] * self.grids.code_unit[1]
+      elif 'x3' in key:
+        self.coord[key] = self.coord[key] * self.grids.code_unit[2]
 
     self.grids.in_code_unit()
     self.fields.in_code_unit()
@@ -242,6 +249,14 @@ class Snapshot(Dataset):
 
     if not self.is_quantity:  # in case not quantity, assign code_unit first
       self.in_code_unit()
+
+    for key in self.coord.keys():
+      if 'x1' in key:
+        self.coord[key] = self.coord[key] * self.grids.astro_unit[0]
+      elif 'x2' in key:
+        self.coord[key] = self.coord[key] * self.grids.astro_unit[1]
+      elif 'x3' in key:
+        self.coord[key] = self.coord[key] * self.grids.astro_unit[2]
 
     self.grids.in_astro_unit()
     self.fields.in_astro_unit()
