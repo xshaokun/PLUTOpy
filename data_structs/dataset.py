@@ -45,14 +45,16 @@ class Dataset(object):
     'code_unit',
     'field_list',
     'derived_fields',
+    'with_units',
     '__log_file',
     '__ds'
   ]
 
-  def __init__(self, w_dir='./', datatype='vtk', init_file='pluto.ini'):
+  def __init__(self, w_dir='./', datatype='vtk', init_file='pluto.ini', with_units=False):
     self.wdir = os.path.abspath(w_dir) + '/'
     self.init_file = init_file
     self.datatype = datatype
+    self.with_units = with_units
 
     varfile = self.wdir+self.datatype+'.out'
     with open(varfile,'r') as vfp:
@@ -70,9 +72,9 @@ class Dataset(object):
 
     # Three base units and default values in pluto code
     self.code_unit={
-      'code_density' : 1.0 * u.g/u.cm**3,
-      'code_length'  : 1.0 * u.cm,
-      'code_velocity': 1.0 * u.cm/u.s
+      'code_density' : u.g/u.cm**3,
+      'code_length'  : u.cm,
+      'code_velocity': u.cm/u.s
     }
 
     if 'definitions.h' in os.listdir(self.wdir):
@@ -89,18 +91,25 @@ class Dataset(object):
             key = 'code_'+var.lower()
             if 'CONST' in expr:
               expr = expr.replace('CONST', 'PlutoDefConstants().CONST')
-            self.code_unit[key] = eval(expr) * self.code_unit[key].unit
+            self.code_unit[key] = eval(expr) * self.code_unit[key]
     else:
       print('Could not open definitions.h! \
-        The values of attributes [geometry, code_units] did not update,\
-        you can specifiy them later, \
-        and assign units by in_code_unit() manually.')
+        The values of attributes [geometry, ndim(dimensions), code_units] did not update,\
+        please specify them manually.')
+      self.geometry = input(f'Specify the [geometry] of this simulation: (CARTESIAN(default)/POLAR/SPHERICAL)') or 'CARTESIAN'
+      self.ndim = int(input(f'Specify the [dimensions] of this simulation: (default is 1)') or 2)
+      for key, value in self.code_unit.items():
+        new_value = input(f'Specify the value of [{key.upper}] in cgs unit system: (default is 1.0)') or 1.0
+        self.code_unit[key] = new_value * value
+
+    for key, value in self.code_unit.items():
+      self.code_unit[key] = u.Unit(key, represents=value)
 
 
   def __getitem__(self, index):
     # index: int or time
     ns = self._number_step(index)
-    ds = Snapshot(ns, w_dir=self.wdir, datatype=self.datatype, init_file=self.init_file)
+    ds = Snapshot(ns, w_dir=self.wdir, datatype=self.datatype, init_file=self.init_file, with_units=self.with_units)
     return ds
 
 
@@ -166,21 +175,20 @@ class Snapshot(Dataset):
     'nstep',
     'time',
     'dt',
-    'is_quantity',
     'index',
     'coord',
     'grids',
     'fields'
   ]
 
-  def __init__(self, ns, w_dir, datatype,init_file):
-    super().__init__(w_dir, datatype, init_file)
+  def __init__(self, ns, w_dir, datatype,init_file, with_units):
+    super().__init__(w_dir, datatype, init_file, with_units)
 
     ds = pp.pload(ns, w_dir=self.wdir, datatype=self.datatype)
     self.nstep = ds.NStep
     self.time = ds.SimTime
     self.dt = ds.Dt
-    self.is_quantity = False
+    self.with_units = False
 
     # initialize Snapshot.index
     grids_info = [
@@ -207,6 +215,9 @@ class Snapshot(Dataset):
     # initialize Snapshot.field
     self.fields = Field(self, ds)
 
+    if with_units:
+      self.in_astro_unit()
+      self.with_units = with_units
 
   def info(self):
     for attr in self.__slots__:
@@ -219,44 +230,49 @@ class Snapshot(Dataset):
   def in_code_unit(self):
     ''' Assign code units '''
 
-    code_length = u.def_unit('unit_length', represents=self.code_unit['code_length'])
-    code_density = u.def_unit('unit_density', represents=self.code_unit['code_density'])
-    code_velocity = u.def_unit('unit_velocity', represents=self.code_unit['code_velocity'])
-
-    for key in self.coord.keys():
-      if 'x1' in key:
-        self.coord[key] = self.coord[key] * self.grids.code_unit[0]
-      elif 'x2' in key:
-        self.coord[key] = self.coord[key] * self.grids.code_unit[1]
-      elif 'x3' in key:
-        self.coord[key] = self.coord[key] * self.grids.code_unit[2]
+    code_length = self.code_unit['code_length']
+    code_density = self.code_unit['code_density']
+    code_velocity = self.code_unit['code_velocity']
 
     self.grids.in_code_unit()
     self.fields.in_code_unit()
 
-    if self.is_quantity:  # in case units are already assigned
+    if self.with_units:  # in case units are already assigned
+      for key in self.coord.keys():
+        if 'x1' in key:
+          self.coord[key] = self.coord[key].to(self.grids.code_unit[0])
+        elif 'x2' in key:
+          self.coord[key] = self.coord[key].to(self.grids.code_unit[1])
+        elif 'x3' in key:
+          self.coord[key] = self.coord[key].to(self.grids.code_unit[2])
       self.time = self.time.to(code_length/code_velocity)
       self.dt = self.dt.to(code_length/code_velocity)
     else:
+      for key in self.coord.keys():
+        if 'x1' in key:
+          self.coord[key] *= self.grids.code_unit[0]
+        elif 'x2' in key:
+          self.coord[key] *= self.grids.code_unit[1]
+        elif 'x3' in key:
+          self.coord[key] *= self.grids.code_unit[2]
       self.time *= code_length/code_velocity
       self.dt *= code_length/code_velocity
-
-    self.is_quantity = True
+      self.with_units = True
 
 
   def in_astro_unit(self):
     ''' convert the units to those commonly used in astro '''
 
-    if not self.is_quantity:  # in case not quantity, assign code_unit first
+    if not self.with_units:  # in case not quantity, assign code_unit first
       self.in_code_unit()
 
     for key in self.coord.keys():
       if 'x1' in key:
-        self.coord[key] = self.coord[key] * self.grids.astro_unit[0]
+        self.coord[key] = self.coord[key].to(self.grids.astro_unit[0])
       elif 'x2' in key:
-        self.coord[key] = self.coord[key] * self.grids.astro_unit[1]
+        self.coord[key] = self.coord[key].to(self.grids.astro_unit[1])
       elif 'x3' in key:
-        self.coord[key] = self.coord[key] * self.grids.astro_unit[2]
+        self.coord[key] = self.coord[key].to(self.grids.astro_unit[2])
 
     self.grids.in_astro_unit()
     self.fields.in_astro_unit()
@@ -284,7 +300,7 @@ class Snapshot(Dataset):
     for coord in offset:
       if coord is not None:  # find the direction
         dim = 'x'+str(i+1)
-        if self.is_quantity:
+        if self.with_units:
           x = self.coord[dim].value
         else:
           x = self.coord[dim]
@@ -319,7 +335,7 @@ class Snapshot(Dataset):
     i = 0
     for coord in offset:
       dim = 'x'+str(i+1)
-      if self.is_quantity:
+      if self.with_units:
         x = self.coord[dim].value
       else:
         x = self.coord[dim]

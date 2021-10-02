@@ -23,14 +23,12 @@ class Grid(object):
     self.dx1, self.dx2, self.dx3 = np.meshgrid(snapshot.coord['dx1'], snapshot.coord['dx2'], snapshot.coord['dx3'])
     self.x1r, self.x2r, self.x3r = np.meshgrid(snapshot.coord['x1r'], snapshot.coord['x2r'], snapshot.coord['x3r'])
     
-    self.update_surf_vol()
-
     if snapshot.ndim !=3:
       for key in self.__slots__[4:13]:
         tmp = getattr(self, key)
         setattr(self, key, tmp.squeeze())
 
-    code_length = u.def_unit('unit_length', represents=snapshot.code_unit['code_length'])
+    code_length = snapshot.code_unit['code_length']
     if snapshot.geometry == 'CARTESIAN':
       self.code_unit = [code_length, code_length, code_length]
       self.astro_unit = [u.kpc, u.kpc, u.kpc]
@@ -41,14 +39,23 @@ class Grid(object):
       self.code_unit = [code_length, u.rad, u.rad]
       self.astro_unit = [u.kpc, u.rad, u.rad]
 
+    self.update_surf_vol()
+
+  def __getitem__(self, key):
+    return getattr(self, key)
+
+  def __setitem__(self, key, value):
+    setattr(self, key, value)
 
   def update_surf_vol(self):
+    x1 = self.x1.value if self.snapshot.with_units else self.x1
+    x2 = self.x2.value if self.snapshot.with_units else self.x2
     if self.snapshot.geometry == 'CARTESIAN':
       self.h1, self.h2, self.h3 = (1, 1, 1)
     elif self.snapshot.geometry == 'POLAR':
-      self.h1, self.h2, self.h3 = (1, self.x1, 1)
+      self.h1, self.h2, self.h3 = (1, x1, 1)
     elif self.snapshot.geometry == 'SPHERICAL':
-      self.h1, self.h2, self.h3 = (1, self.x1, self.x1*np.sin(self.x2))
+      self.h1, self.h2, self.h3 = (1, x1, x1*np.sin(x2))
 
     self.dA1 = self.h2 * self.h3 * self.dx2 * self.dx3
     self.dA2 = self.h1 * self.h3 * self.dx1 * self.dx3
@@ -85,26 +92,22 @@ class Grid(object):
   def in_code_unit(self):
     ''' Assign code units '''
 
-    if self.snapshot.is_quantity:
+    if self.snapshot.with_units:
       for key in self.__slots__[4:13]:
         if 'x1' in key:
-          tmp = getattr(self, key).to(self.code_unit[0])
+          self[key] = self[key].to(self.code_unit[0])
         elif 'x2' in key:
-          tmp = getattr(self, key).to(self.code_unit[1])
+          self[key] = self[key].to(self.code_unit[1])
         elif 'x3' in key:
-          tmp = getattr(self, key).to(self.code_unit[2])
-        
-        setattr(self, key, tmp)
+          self[key] = self[key].to(self.code_unit[2])
     else:
       for key in self.__slots__[4:13]:
         if 'x1' in key:
-          tmp = getattr(self, key) * self.code_unit[0]
+          self[key] *= self.code_unit[0]
         elif 'x2' in key:  
-          tmp = getattr(self, key) * self.code_unit[1]
+          self[key] *= self.code_unit[1]
         elif 'x3' in key:  
-          tmp = getattr(self, key) * self.code_unit[2]
-        
-        setattr(self, key, tmp)
+          self[key] *= self.code_unit[2]
 
     self.update_surf_vol()
 
@@ -112,15 +115,12 @@ class Grid(object):
   def in_astro_unit(self):
     ''' convert the units to those commonly used in astro '''
 
-    if not self.snapshot.is_quantity:
-      self.in_code_unit()
-
     for key in self.__slots__[4:13]:
       if 'x1' in key:
-        tmp = getattr(self, key).to(self.astro_unit[0])
+        self[key] = self[key].to(self.astro_unit[0])
       elif 'x2' in key:
-        tmp = getattr(self, key).to(self.astro_unit[1])
+        self[key] = self[key].to(self.astro_unit[1])
       elif 'x3' in key:
-        tmp = getattr(self, key).to(self.astro_unit[2])
+        self[key] = self[key].to(self.astro_unit[2])
 
     self.update_surf_vol()

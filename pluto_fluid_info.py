@@ -29,10 +29,11 @@ class PlutoFluidInfo(object):
 
   @classmethod
   def info(cls, name):
-    header = ['type', 'function', 'code_unit', 'astro_unit', 'dimension', 'alias']
-    print(f'name      : \t {name}')
+    header = ['type', 'function', 'code unit', 'astro unit', 'dimension', 'alias']
+    width = len(max(header, key=len))
+    print('{1:{0}s}: \t {2:s}'.format(width+2, 'name'.title(), name))
     for h, v in zip(header, cls.known_fields[name]):
-      print(f'{h:10}: \t {v}')
+      print(f'{h.title():{width+2}}: \t {v}')
 
   @classmethod
   def add_field(cls, name, type, **kwargs):
