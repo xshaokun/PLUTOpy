@@ -64,25 +64,25 @@ class Field(object):
     v_y = v_r * np.sin(phi) + v_phi * np.cos(phi)
     return v_x, v_y, v_z
 
-  def to_cart(self, field):
+
+  def to_cartesian(self):
     ''' convert to cartesian coordinate system
 
-    Args:
-      field (str): 'grid' or 'velocity'
+    Currently only support converting velocity (vx1, vx2, vx3).
 
     Returns:
       tuple: the resulted three components
     '''
 
-    v1 = getattr(self, field+'1')
-    v2 = getattr(self, field+'2')
-    v3 = getattr(self, field+'3')
+    v1 = self.snapshot.fields['vx1']
+    v2 = self.snapshot.fields['vx2']
+    v3 = self.snapshot.fields['vx3']
     if self.snapshot.geometry == 'SPHERICAL':
-      theta = self.snapshot.grid['x2']
-      phi = self.snapshot.grid['x3']
+      theta = self.snapshot.grids['x2']
+      phi = self.snapshot.grids['x3']
       v1, v2, v3 = self._from_sph(theta, phi, v1, v2, v3)
     elif self.snapshot.geometry == 'POLAR':
-      phi = self.snapshot.grid['x2']
+      phi = self.snapshot.grids['x2']
       v1, v2, v3 = self._from_cyl(phi, v1, v2, v3)
     else:
       raise KeyError('Only support geometry of [SPHERICAL] and [POLAR].')

@@ -80,13 +80,23 @@ class Grid(object):
     return x, y, z
 
 
-  def to_cart(self):
+  def to_cartesian(self):
+    ''' convert to cartesian coordinate system
+
+    Currently only support converting cell-centered coordinate (x1, x2, x3).
+
+    Returns:
+      tuple: the resulted three components
+    '''
+
     if self.snapshot.geometry == 'SPHERICAL':
-      self.x1, self.x2, self.x3 = self._from_sph(self.x1, self.x2, self.x3)
+      x1, x2, x3 = self._from_sph(self.x1, self.x2, self.x3)
     elif self.snapshot.geometry == 'POLAR':
-      self.x1, self.x2, self.x3 = self._from_cyl(self.x1, self.x2, self.x3)
+      x1, x2, x3 = self._from_cyl(self.x1, self.x2, self.x3)
     else:
       raise KeyError('Only support geometry of [SPHERICAL] and [POLAR].')
+
+    return x1, x2, x3
 
 
   def in_code_unit(self):
