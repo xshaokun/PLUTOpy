@@ -6,10 +6,10 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from pluto_def_constants import PlutoDefConstants
-from pluto_fluid_info import PlutoFluidInfo
-from data_structs import Dataset, Snapshot
-from operations import to_cart, slice2d, slice1d
+from .pluto_def_constants import PlutoDefConstants
+from .pluto_fluid_info import PlutoFluidInfo
+from .data_structs.dataset import Dataset, Snapshot
+from .operations import to_cart, slice2d, slice1d
 
 
 class Preview(object):

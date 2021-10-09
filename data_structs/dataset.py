@@ -128,8 +128,8 @@ class Dataset(object):
           it is assumed to be time, and return the nearst number step
     '''
 
-    hdr = ['time','dt','Nstep']
-    log_file = pd.read_table(self.wdir+self.datatype+'.out',sep=' ', usecols=[1,2,3], names=hdr)
+    hdr = ['nfile','time','dt','Nstep']
+    log_file = pd.read_table(self.wdir+self.datatype+'.out',sep=' ', usecols=[0,1,2,3], names=hdr, index_col=0)
 
     if type(ns) is int:
       if ns < 0:
