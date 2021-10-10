@@ -347,6 +347,6 @@ class Snapshot(Dataset):
       else:
         offset[i] = None
       i+=1
-    index = str(offset[::-1]).replace('None',':')
+    index = str(offset).replace('None',':')
     arr = eval(f'self.{type}["{field}"]{index}')
     return arr
