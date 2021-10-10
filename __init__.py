@@ -9,7 +9,7 @@ from .pluto_fluid_info import (
 from .data_structs.dataset import Dataset, Snapshot
 
 from .operations import (
-  to_cart,
+  to_cartesian,
   slice1d,
   slice2d
 )

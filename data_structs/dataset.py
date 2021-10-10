@@ -5,7 +5,7 @@ import pyPLUTO.pload as pp
 
 from ..pluto_def_constants import PlutoDefConstants
 from ..pluto_fluid_info import PlutoFluidInfo
-from ..utilities.tools import nearest 
+from ..utilities.tools import nearest
 from .grid import Grid
 from .field import Field
 
@@ -280,12 +280,13 @@ class Snapshot(Dataset):
     self.dt = self.dt.to(u.yr)
 
 
-  def slice2d(self, field, x1=None, x2=None, x3=None):
+  def slice2d(self, type, field, x1=None, x2=None, x3=None):
     ''' Slice 3-D array and return 2-D array
 
     coordinate of one dimension should be specified
 
     Args:
+      type: (str): grids or fields
       field (str): output variable name listed in attribute `field_list`
       x1 (float): rough coordinate (optional)
       x2 (float): rough coordinate (optional)
@@ -308,16 +309,17 @@ class Snapshot(Dataset):
         break
       i+=1
     index = str(offset).replace('None',':')
-    arr = eval('self.fields[field]' + index)
+    arr = eval(f'self.{type}["{field}"]{index}')
     return arr
 
 
-  def slice1d(self, field, x1=None, x2=None, x3=None):
+  def slice1d(self, type, field, x1=None, x2=None, x3=None):
     ''' Slice 3-D array and return 1-D array
 
     coordinates of two dimensions should be specified
 
     Args:
+      type (str): grids or fields
       field (str): output variable name listed in attribute `field_list`
       x1 (float): rough coordinate (optional)
       x2 (float): rough coordinate (optional)
@@ -346,5 +348,5 @@ class Snapshot(Dataset):
         offset[i] = None
       i+=1
     index = str(offset[::-1]).replace('None',':')
-    arr = eval('self.fields[field]'+index)
+    arr = eval(f'self.{type}["{field}"]{index}')
     return arr

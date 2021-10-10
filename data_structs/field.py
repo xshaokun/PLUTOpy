@@ -21,7 +21,7 @@ class Field(object):
     self.derived_fields = snapshot.derived_fields
     self._cache = {}
     for name in self.primal_fields:
-      self._cache[name] = getattr(data, name).T
+      self._cache[name] = getattr(data, name)
     self.cache_list = self.primal_fields
 
   def __getitem__(self, name):
@@ -34,6 +34,9 @@ class Field(object):
       return self._cache[name]
     else:
       raise KeyError(f'The field {name} cannot be found in PlutoFluidInfo. Check the name or add by yourself.')
+
+  def __setitem__(self, name, value):
+    self._cache[name] = value
 
   def remove(self, name):
     del self._cache[name]

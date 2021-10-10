@@ -19,9 +19,9 @@ class Grid(object):
 
   def __init__(self, snapshot):
     self.snapshot = snapshot
-    self.x1, self.x2, self.x3 = np.meshgrid(snapshot.coord['x1'], snapshot.coord['x2'], snapshot.coord['x3'])
-    self.dx1, self.dx2, self.dx3 = np.meshgrid(snapshot.coord['dx1'], snapshot.coord['dx2'], snapshot.coord['dx3'])
-    self.x1r, self.x2r, self.x3r = np.meshgrid(snapshot.coord['x1r'], snapshot.coord['x2r'], snapshot.coord['x3r'])
+    self.x1, self.x2, self.x3 = np.meshgrid(snapshot.coord['x1'], snapshot.coord['x2'], snapshot.coord['x3'], indexing='ij')
+    self.dx1, self.dx2, self.dx3 = np.meshgrid(snapshot.coord['dx1'], snapshot.coord['dx2'], snapshot.coord['dx3'], indexing='ij')
+    self.x1r, self.x2r, self.x3r = np.meshgrid(snapshot.coord['x1r'], snapshot.coord['x2r'], snapshot.coord['x3r'], indexing='ij')
     
     if snapshot.ndim !=3:
       for key in self.__slots__[4:13]:

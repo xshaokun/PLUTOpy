@@ -6,10 +6,10 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from .pluto_def_constants import PlutoDefConstants
-from .pluto_fluid_info import PlutoFluidInfo
-from .data_structs.dataset import Dataset, Snapshot
-from .operations import to_cart, slice2d, slice1d
+from PLUTOpy.pluto_def_constants import PlutoDefConstants
+from PLUTOpy.pluto_fluid_info import PlutoFluidInfo
+from PLUTOpy.data_structs.dataset import Dataset, Snapshot
+from PLUTOpy.operations import to_cartesian, slice2d, slice1d
 
 
 class Preview(object):
@@ -24,7 +24,7 @@ class Preview(object):
   mpl.rcParams['mathtext.fontset'] = 'cm'
   mpl.rcParams['font.family'] = 'serif'
 
-  def __init__(self, wdir='./', datatype='vtk'):
+  def __init__(self, wdir='./', datatype='dbl'):
     self.wdir = os.path.abspath(wdir)+'/'
     self.datatype = datatype
 
@@ -83,7 +83,7 @@ class Preview(object):
     self.index = ss.nstep
 
     if ss.geometry != 'CARTESIAN':
-      ss = to_cart(ss)
+      ss = to_cartesian(ss)
 
     if kwargs.get('in_astro_unit'):
       ss.in_astro_unit()
@@ -92,31 +92,31 @@ class Preview(object):
     label = ['x1','x2','x3']
 
     if ss.ndim==3:
-      arr = ss.slice2d(field, x1=x1, x2=x2, x3=x3)
+      arr = ss.slice2d('fields', field, x1=x1, x2=x2, x3=x3)
       for i in range(3):  # find the dirction
         if offset[i] is not None:
           dim = 'x'+str(i+1)
           label.remove(dim)
           break
-      x1 = ss.coord[label[0]]
-      x2 = ss.coord[label[1]]
+      x = ss.slice2d('grids', label[0], x1=x1, x2=x2, x3=x3)
+      y = ss.slice2d('grids', label[1], x1=x1, x2=x2, x3=x3)
     elif ss.ndim==2:
       arr = ss.fields[field]
-      x1 = ss.grid['x1']
-      x2 = ss.grid['x3']
+      x = ss.grids['x1']
+      y = ss.grids['x3']
 
     ax1 = self.fig.add_subplot(111)
     ax1.set_aspect('equal')
-    if ss.is_quantity:  # pcolormesh does not support Quantity
-      x1 = x1.value
-      x2 = x2.value
+    if ss.with_units:  # pcolormesh does not support Quantity
+      x = x.value
+      y = y.value
       arr = arr.value
-    ax1.axis([np.amin(x1),np.amax(x1),np.amin(x2),np.amax(x2)])
+    ax1.axis([np.amin(x),np.amax(x),np.amin(y),np.amax(y)])
     if log:
-      pcm = ax1.pcolormesh(x1,x2,arr,vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax'), \
+      pcm = ax1.pcolormesh(x,y,arr,vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax'), \
         cmap=kwargs.get('cmap'), shading='auto', norm=mpl.colors.LogNorm())
     else:
-      pcm = ax1.pcolormesh(x1,x2,arr,vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax'), \
+      pcm = ax1.pcolormesh(x,y,arr,vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax'), \
         cmap=kwargs.get('cmap'), shading='auto')
 
     plt.title(kwargs.get('title',f't = {ss.time:.3e}'),size=kwargs.get('size'))
@@ -165,7 +165,7 @@ class Preview(object):
         x = ss.coord[dim]
         break
 
-    value = ss.slice1d(field,x1=x1,x2=x2,x3=x3)
+    value = ss.slice1d('fields',field,x1=x1,x2=x2,x3=x3)
 
     plt.plot(x, value, label=f't={ss.time:.3e}')
 
