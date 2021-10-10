@@ -15,7 +15,7 @@ class Dataset(object):
 
   Args:
     w_dir (str): path to the directory where data files locate. Default is './'.
-    datatype (str): type of data files. Default is 'vtk'.
+    datatype (str): type of data files. Default is 'dbl'.
     init_file (str): init file including the parameters for simulation. Default is 'pluto.ini'.
 
   Attributes:
@@ -50,7 +50,7 @@ class Dataset(object):
     '__ds'
   ]
 
-  def __init__(self, w_dir='./', datatype='vtk', init_file='pluto.ini', with_units=False):
+  def __init__(self, w_dir='./', datatype='dbl', init_file='pluto.ini', with_units=False):
     self.wdir = os.path.abspath(w_dir) + '/'
     self.init_file = init_file
     self.datatype = datatype
