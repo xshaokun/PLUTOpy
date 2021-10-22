@@ -18,6 +18,8 @@ class PlutoFluidInfo(object):
     'vx2'       :('vector', None, 'code_velocity',           'km/s'   , ['velocity-2'  ]),
     'vx3'       :('vector', None, 'code_velocity',           'km/s'   , ['velocity-3'  ]),
     'prs'       :('scalar', None, 'code_density*code_velocity**2',   'erg/cm**3',  ['pressure'  ]),
+    'tmp'       :('scalar', None, 'K',   'K',  ['temperature'  ]),
+    'phi'       :('scalar', None, 'code_velocity**2',   'km**2/s**2',  ['potential'  ]),
   }
 
   @classmethod
