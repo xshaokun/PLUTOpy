@@ -5,6 +5,8 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from astropy.visualization import quantity_support
+quantity_support()  
 
 from PLUTOpy.pluto_def_constants import PlutoDefConstants
 from PLUTOpy.pluto_fluid_info import PlutoFluidInfo
@@ -24,9 +26,10 @@ class Preview(object):
   mpl.rcParams['mathtext.fontset'] = 'cm'
   mpl.rcParams['font.family'] = 'serif'
 
-  def __init__(self, wdir='./', datatype='dbl'):
+  def __init__(self, wdir='./', datatype='dbl', with_units=False):
     self.wdir = os.path.abspath(wdir)+'/'
     self.datatype = datatype
+    self.with_units = with_units
 
     self.fig = plt.figure(figsize=(5,4), tight_layout=True)
 
@@ -77,16 +80,13 @@ class Preview(object):
       size (float): fontsize of title
     '''
 
-    ds = Dataset(w_dir=kwargs.get('wdir', self.wdir), datatype=kwargs.get('datatype', self.datatype))
+    ds = Dataset(w_dir=kwargs.get('wdir', self.wdir), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
     ss = ds[ns]
     self.field = field
     self.index = ss.nstep
 
     if ss.geometry != 'CARTESIAN':
       ss = to_cartesian(ss)
-
-    if kwargs.get('in_astro_unit'):
-      ss.in_astro_unit()
 
     offset = [x1,x2,x3]
     label = ['x1','x2','x3']
@@ -113,8 +113,8 @@ class Preview(object):
       arr = arr.value
     ax1.axis([np.amin(x),np.amax(x),np.amin(y),np.amax(y)])
     if log:
-      pcm = ax1.pcolormesh(x,y,arr,vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax'), \
-        cmap=kwargs.get('cmap'), shading='auto', norm=mpl.colors.LogNorm())
+      pcm = ax1.pcolormesh(x,y,arr,\
+        cmap=kwargs.get('cmap'), shading='auto', norm=mpl.colors.LogNorm(vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax')))
     else:
       pcm = ax1.pcolormesh(x,y,arr,vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax'), \
         cmap=kwargs.get('cmap'), shading='auto')
@@ -153,7 +153,7 @@ class Preview(object):
       ylog (bool): set x-axis in log scale
     '''
 
-    ds = Dataset(w_dir=kwargs.get('wdir', self.wdir), datatype=kwargs.get('datatype', self.datatype))
+    ds = Dataset(w_dir=kwargs.get('wdir', self.wdir), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
     ss = ds[ns]
     self.field = field
     self.index = ss.nstep
