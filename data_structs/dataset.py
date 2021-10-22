@@ -19,7 +19,8 @@ class Dataset(object):
     init_file (str): init file including the parameters for simulation. Default is 'pluto.ini'.
 
   Attributes:
-    wdir (str): absolute path to the dirctory.
+    code_dir (str): absolute path to the dirctory.
+    output_dir (str): 
     init_file (str):
     datatype (str):
     filetype (str):
@@ -35,7 +36,8 @@ class Dataset(object):
   '''
 
   __slots__=[
-    'wdir',
+    'code_dir',
+    'output_dir',
     'init_file',
     'datatype',
     'filetype',
@@ -50,13 +52,19 @@ class Dataset(object):
     '__ds'
   ]
 
-  def __init__(self, w_dir='./', datatype='dbl', init_file='pluto.ini', with_units=False):
-    self.wdir = os.path.abspath(w_dir) + '/'
+  def __init__(self, code_dir='./', datatype='dbl', init_file='pluto.ini', with_units=False):
+    self.code_dir = os.path.abspath(code_dir) + '/'
+    self.output_dir = self.code_dir
     self.init_file = init_file
     self.datatype = datatype
     self.with_units = with_units
 
-    varfile = self.wdir+self.datatype+'.out'
+    with open(self.init_file, 'r') as f:
+      for line in f.readlines():
+        if 'output_dir' in line:
+          self.output_dir = line.split(' ')[-1]
+
+    varfile = self.output_dir+self.datatype+'.out'
     with open(varfile,'r') as vfp:
       varinfo = vfp.read().splitlines()
       lastline = varinfo[-1].split()
@@ -77,8 +85,8 @@ class Dataset(object):
       'code_velocity': u.cm/u.s
     }
 
-    if 'definitions.h' in os.listdir(self.wdir):
-      with open(self.wdir+'definitions.h','r') as df:
+    if 'definitions.h' in os.listdir(self.code_dir):
+      with open(self.code_dir+'definitions.h','r') as df:
         for line in df.readlines():
           if line.startswith('#define  GEOMETRY'):
             self.geometry = line.split()[-1]
@@ -109,7 +117,7 @@ class Dataset(object):
   def __getitem__(self, index):
     # index: int or time
     ns = self._number_step(index)
-    ds = Snapshot(ns, w_dir=self.wdir, datatype=self.datatype, init_file=self.init_file, with_units=self.with_units)
+    ds = Snapshot(ns, w_dir=self.output_dir, datatype=self.datatype, init_file=self.init_file, with_units=self.with_units)
     return ds
 
 
@@ -129,7 +137,7 @@ class Dataset(object):
     '''
 
     hdr = ['nfile','time','dt','Nstep']
-    log_file = pd.read_table(self.wdir+self.datatype+'.out',sep=' ', usecols=[0,1,2,3], names=hdr, index_col=0)
+    log_file = pd.read_table(self.output_dir+self.datatype+'.out',sep=' ', usecols=[0,1,2,3], names=hdr, index_col=0)
 
     if type(ns) is int:
       if ns < 0:
@@ -184,7 +192,7 @@ class Snapshot(Dataset):
   def __init__(self, ns, w_dir, datatype,init_file, with_units):
     super().__init__(w_dir, datatype, init_file, with_units)
 
-    ds = pp.pload(ns, w_dir=self.wdir, datatype=self.datatype)
+    ds = pp.pload(ns, w_dir=self.output_dir, datatype=self.datatype)
     self.nstep = ds.NStep
     self.time = ds.SimTime
     self.dt = ds.Dt
