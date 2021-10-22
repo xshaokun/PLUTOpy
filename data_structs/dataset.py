@@ -14,7 +14,7 @@ class Dataset(object):
   ''' Pluto data work directory
 
   Args:
-    w_dir (str): path to the directory where data files locate. Default is './'.
+    code_dir (str): path to the directory where data files locate. Default is './'.
     datatype (str): type of data files. Default is 'dbl'.
     init_file (str): init file including the parameters for simulation. Default is 'pluto.ini'.
 
@@ -54,15 +54,16 @@ class Dataset(object):
 
   def __init__(self, code_dir='./', datatype='dbl', init_file='pluto.ini', with_units=False):
     self.code_dir = os.path.abspath(code_dir) + '/'
-    self.output_dir = self.code_dir
     self.init_file = init_file
+    self.output_dir = self.code_dir
     self.datatype = datatype
     self.with_units = with_units
 
-    with open(self.init_file, 'r') as f:
+    with open(self.code_dir+self.init_file, 'r') as f:
       for line in f.readlines():
         if 'output_dir' in line:
-          self.output_dir = line.split(' ')[-1]
+          output_dir = line.split()[-1].splitlines()[0] + '/'
+          self.output_dir = self.code_dir + output_dir
 
     varfile = self.output_dir+self.datatype+'.out'
     with open(varfile,'r') as vfp:
@@ -117,7 +118,7 @@ class Dataset(object):
   def __getitem__(self, index):
     # index: int or time
     ns = self._number_step(index)
-    ds = Snapshot(ns, w_dir=self.output_dir, datatype=self.datatype, init_file=self.init_file, with_units=self.with_units)
+    ds = Snapshot(ns, code_dir=self.code_dir, datatype=self.datatype, init_file=self.init_file, with_units=self.with_units)
     return ds
 
 
@@ -189,8 +190,8 @@ class Snapshot(Dataset):
     'fields'
   ]
 
-  def __init__(self, ns, w_dir, datatype,init_file, with_units):
-    super().__init__(w_dir, datatype, init_file, with_units)
+  def __init__(self, ns, code_dir, datatype,init_file, with_units):
+    super().__init__(code_dir, datatype, init_file, with_units)
 
     ds = pp.pload(ns, w_dir=self.output_dir, datatype=self.datatype)
     self.nstep = ds.NStep

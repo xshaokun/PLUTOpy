@@ -6,7 +6,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.visualization import quantity_support
-quantity_support()  
+quantity_support()
 
 from PLUTOpy.pluto_def_constants import PlutoDefConstants
 from PLUTOpy.pluto_fluid_info import PlutoFluidInfo
@@ -18,7 +18,7 @@ class Preview(object):
   ''' Class for previewing data results.
 
   Args:
-    wdir (str): absolute path to the dirctory.
+    code_dir (str): absolute path to the dirctory.
     datatype (str): type of data files. Default is 'vtk'.
   '''
 
@@ -26,8 +26,9 @@ class Preview(object):
   mpl.rcParams['mathtext.fontset'] = 'cm'
   mpl.rcParams['font.family'] = 'serif'
 
-  def __init__(self, wdir='./', datatype='dbl', with_units=False):
-    self.wdir = os.path.abspath(wdir)+'/'
+  def __init__(self, code_dir='./', init_file='pluto.ini', datatype='dbl', with_units=False):
+    self.code_dir = os.path.abspath(code_dir)+'/'
+    self.init_file= init_file
     self.datatype = datatype
     self.with_units = with_units
 
@@ -51,7 +52,7 @@ class Preview(object):
       jpg file: with name of 'name-model.jpg', model is name of dirctory
     '''
 
-    model = self.wdir.split('/')[-2]
+    model = self.code_dir.split('/')[-2]
     if name is None:
       plt.savefig(path+f'{self.field}{self.index}-{model}.jpg',bbox_inches='tight', pad_inches=0.02, dpi=kwargs.get('dpi',300))
     else:
@@ -71,7 +72,7 @@ class Preview(object):
       x3 (float): (optional) rough coordinate
 
     **kwargs:
-      wdir (str): path to the directory which has the data files
+      code_dir (str): path to the directory which has the data files
       datatype (str): type of data files. Default is 'vtk'.
       vmin (float): The minimum value of the 2D array (Default : min(field))
       vmax (float): The maximum value of the 2D array (Default : max(field))
@@ -80,7 +81,7 @@ class Preview(object):
       size (float): fontsize of title
     '''
 
-    ds = Dataset(w_dir=kwargs.get('wdir', self.wdir), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
+    ds = Dataset(code_dir=kwargs.get('code_dir', self.code_dir), init_file=kwargs.get('init_file', self.init_file), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
     ss = ds[ns]
     self.field = field
     self.index = ss.nstep
@@ -147,13 +148,13 @@ class Preview(object):
       x3 (float): (optional) rough coordinate
 
     **kwargs:
-      wdir (str): path to the directory which has the data files
+      code_dir (str): path to the directory which has the data files
       datatype (str): type of data files. Default is 'vtk'.
       xlog (bool): set x-axis in log scale
       ylog (bool): set x-axis in log scale
     '''
 
-    ds = Dataset(w_dir=kwargs.get('wdir', self.wdir), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
+    ds = Dataset(code_dir=kwargs.get('code_dir', self.code_dir), init_file=kwargs.get('init_file', self.init_file), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
     ss = ds[ns]
     self.field = field
     self.index = ss.nstep
@@ -182,7 +183,7 @@ class Preview(object):
   def hist(self, *var, op=None, **kwargs):  # in construction
     ''' Preview temperal evolution stored in hist.dat file '''
 
-    hist = pd.read_csv(self.wdir+'hist.dat', sep='\s+', index_col='t')
+    hist = pd.read_csv(self.code_dir+'hist.dat', sep='\s+', index_col='t')
     hist = hist[list(var)]
 
     if op is None:
