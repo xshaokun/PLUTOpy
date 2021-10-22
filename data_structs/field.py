@@ -99,13 +99,14 @@ class Field(object):
     code_length = self.snapshot.code_unit['code_length']
     code_density = self.snapshot.code_unit['code_density']
     code_velocity = self.snapshot.code_unit['code_velocity']
+    u.add_enabled_units([code_density, code_length, code_velocity])
     pluto_fields = PlutoFluidInfo.known_fields
     if self.snapshot.with_units:
       for key in self.primal_fields:
         self._cache[key] = self._cache[key].to(eval(pluto_fields[key][2]))
     else:
       for key in self.primal_fields:
-        self._cache[key] *= eval(pluto_fields[key][2])
+        self._cache[key] *= u.Unit(pluto_fields[key][2])
 
     self.update_derived_fields()
 
