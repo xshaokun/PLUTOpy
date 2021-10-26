@@ -41,7 +41,7 @@ class Preview(object):
     return plt.show()
 
 
-  def save(self, name=None, path='./', **kwargs):
+  def save(self, name=None, path=self.output_dir, **kwargs):
     ''' save figure
 
     Args:
@@ -52,7 +52,7 @@ class Preview(object):
       jpg file: with name of 'name-model.jpg', model is name of dirctory
     '''
 
-    model = self.code_dir.split('/')[-2]
+    model = self.output_dir.split('/')[-2]
     if name is None:
       plt.savefig(path+f'{self.field}{self.index}-{model}.jpg',bbox_inches='tight', pad_inches=0.02, dpi=kwargs.get('dpi',300))
     else:
@@ -82,6 +82,7 @@ class Preview(object):
     '''
 
     ds = Dataset(code_dir=kwargs.get('code_dir', self.code_dir), init_file=kwargs.get('init_file', self.init_file), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
+    self.output_dir = ds.output_dir
     ss = ds[ns]
     self.field = field
     self.index = ss.nstep
@@ -155,6 +156,7 @@ class Preview(object):
     '''
 
     ds = Dataset(code_dir=kwargs.get('code_dir', self.code_dir), init_file=kwargs.get('init_file', self.init_file), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
+    self.output_dir = ds.output_dir
     ss = ds[ns]
     self.field = field
     self.index = ss.nstep
