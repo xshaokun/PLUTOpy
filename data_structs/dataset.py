@@ -86,6 +86,7 @@ class Dataset(object):
       'code_velocity': u.cm/u.s
     }
 
+    # Import settings from definitions.h
     if 'definitions.h' in os.listdir(self.code_dir):
       with open(self.code_dir+'definitions.h','r') as df:
         for line in df.readlines():
@@ -111,9 +112,22 @@ class Dataset(object):
         new_value = input(f'Specify the value of [{key.upper}] in cgs unit system: (default is 1.0)') or 1.0
         self.code_unit[key] = new_value * value
 
+    # Initialize code units
     for key, value in self.code_unit.items():
       self.code_unit[key] = u.Unit(key, represents=value)
 
+    # Given some commonly-used units
+    code_density = self.code_unit['code_density']
+    code_length = self.code_unit['code_length']
+    code_velocity = self.code_unit['code_velocity']
+    u.add_enabled_units([code_density, code_length, code_velocity])
+    self.code_unit['code_time'] = code_length/code_velocity
+    self.code_unit['code_pressure'] = code_density*code_velocity*code_velocity
+    self.code_unit['code_energy'] = self.code_unit['code_pressure']*code_length**3
+    self.code_unit['code_power'] = self.code_unit['code_energy']/self.code_unit['code_time']
+    self.code_unit['code_mass'] = code_density*code_length**3
+    self.code_unit['code_momentum'] = self.code_unit['code_mass']*code_velocity
+    self.code_unit['code_force'] = self.code_unit['code_pressure']*code_length*code_length
 
   def __getitem__(self, index):
     # index: int or time
@@ -232,7 +246,9 @@ class Snapshot(Dataset):
     for attr in self.__slots__:
       if hasattr(self, attr):
         value = getattr(self, attr)
-        if not type(value) is dict:
+        if type(value) is dict:
+          print(f'{attr:15}:  {value.keys()}')
+        else:
           print(f'{attr:15}:  {value}')
 
 

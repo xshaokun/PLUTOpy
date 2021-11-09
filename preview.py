@@ -41,7 +41,7 @@ class Preview(object):
     return plt.show()
 
 
-  def save(self, name=None, path=self.output_dir, **kwargs):
+  def save(self, name=None, path=None, **kwargs):
     ''' save figure
 
     Args:
@@ -52,7 +52,8 @@ class Preview(object):
       jpg file: with name of 'name-model.jpg', model is name of dirctory
     '''
 
-    model = self.output_dir.split('/')[-2]
+    if path is None: path = self.output_dir
+    model = path.split('/')[-2]
     if name is None:
       plt.savefig(path+f'{self.field}{self.index}-{model}.jpg',bbox_inches='tight', pad_inches=0.02, dpi=kwargs.get('dpi',300))
     else:
@@ -182,23 +183,23 @@ class Preview(object):
     return self
 
 
-  def hist(self, *var, op=None, **kwargs):  # in construction
-    ''' Preview temperal evolution stored in hist.dat file '''
+  def hist(self, *var, file_name='hist.out', operate=None, **kwargs):  # in construction
+    ''' Preview temperal evolution stored in hist.out file '''
 
-    hist = pd.read_csv(self.code_dir+'hist.dat', sep='\s+', index_col='t')
+    hist = pd.read_csv(self.code_dir+'hist.out', sep='\s+', index_col='t')
     hist = hist[list(var)]
 
-    if op is None:
+    if operate is None:
       ax = plt.plot(hist)
       plt.legend(ax,var)
-    elif op == 'diff':
+    elif operate == 'diff':
       ax = plt.plot(hist-hist.iloc[[0]].values)
       plt.legend(ax,[f'{v}-{v}(0)' for v in var])
-    elif op == 'norm':
+    elif operate == 'norm':
       ax = plt.plot(hist/hist.iloc[[0]].values)
       plt.legend(ax,[f'{v}/{v}(0)' for v in var])
     else:
-      raise KeyError(f'Operation [{op}] has not defined yet.')
+      raise KeyError(f'Operation [{operate}] has not defined yet.')
 
     plt.title(kwargs.get('title','Title'),size=kwargs.get('size'))
     plt.xlabel(kwargs.get('label1','Time (code unit)'),size=kwargs.get('size'))
