@@ -27,6 +27,12 @@ class PlutoFluidInfo(object):
   }
 
   @classmethod
+  def header(cls):
+    # header must be consistent with that in known_fields
+    header = ['type', 'function', 'code_unit', 'astro_unit', 'alias']
+    return header
+
+  @classmethod
   def type(cls, field):
     return cls.known_fields[field][0]
 
@@ -43,19 +49,29 @@ class PlutoFluidInfo(object):
     return cls.known_fields[field][3]
 
   @classmethod
-  def show(cls):
-    print(f'Field Name \t Unit       \t Alias')
+  def alias(cls, field):
+    return cls.known_fields[field][-1]
+
+  @classmethod
+  def list(cls):
+    """ list of field name """
+    return list(cls.known_fields.keys())
+
+  @classmethod
+  def brief(cls):
+    """ Brief of callable fields """
+    print(f'Field Name \t Alias')
     print('--------------------------------------')
-    for key, value in cls.known_fields.items():
-      print(f'{key:10s} \t {value[2]:10} \t {value[-1]}')
+    for key in cls.list():
+      print(f'{key:10s} \t ',cls.alias(key))
 
   @classmethod
   def info(cls, name):
-    header = ['type', 'function', 'code unit', 'astro unit', 'dimension', 'alias']
-    width = len(max(header, key=len))
-    print('{1:{0}s}: \t {2:s}'.format(width+2, 'name'.title(), name))
-    for h, v in zip(header, cls.known_fields[name]):
-      print(f'{h.title():{width+2}}: \t {v}')
+    """ Information of a given field """
+    width = len(max(cls.header(), key=len))
+    print('{1:{0}s}: \t {2:s}'.format(width+2, 'Name', name))
+    for h in cls.header():
+      print(f'{h.title():{width+2}}: \t {getattr(cls,h)(name)}')
 
   @classmethod
   def add_field(cls, name, type, **kwargs):
