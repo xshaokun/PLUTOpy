@@ -21,19 +21,22 @@ class Field(object):
     self.derived_fields = snapshot.derived_fields
     self._cache = {}
     for name in self.primal_fields:
-      self._cache[name] = getattr(data, name).T
+      self._cache[name] = getattr(data, name)
     self.cache_list = self.primal_fields
 
   def __getitem__(self, name):
     if name in self.cache_list:
       return self._cache[name]
     elif name in self.derived_fields:
-      f = PlutoFluidInfo.known_fields[name][1]
+      f = PlutoFluidInfo.function(name)
       self.cache_list.append(name)
       self._cache[name] = f(self.snapshot)
       return self._cache[name]
     else:
       raise KeyError(f'The field {name} cannot be found in PlutoFluidInfo. Check the name or add by yourself.')
+
+  def __setitem__(self, name, value):
+    self._cache[name] = value
 
   def remove(self, name):
     del self._cache[name]
@@ -46,7 +49,7 @@ class Field(object):
     pluto_fields = PlutoFluidInfo.known_fields
     derived_cache_list = list(set(self.cache_list) - set(self.primal_fields))
     for key in derived_cache_list:
-      f = PlutoFluidInfo.known_fields[key][1]
+      f = PlutoFluidInfo.function(key)
       self._cache[key] = f(self.snapshot).to(u.Unit(pluto_fields[key][3]))
 
   @staticmethod
@@ -64,25 +67,25 @@ class Field(object):
     v_y = v_r * np.sin(phi) + v_phi * np.cos(phi)
     return v_x, v_y, v_z
 
-  def to_cart(self, field):
+
+  def to_cartesian(self):
     ''' convert to cartesian coordinate system
 
-    Args:
-      field (str): 'grid' or 'velocity'
+    Currently only support converting velocity (vx1, vx2, vx3).
 
     Returns:
       tuple: the resulted three components
     '''
 
-    v1 = getattr(self, field+'1')
-    v2 = getattr(self, field+'2')
-    v3 = getattr(self, field+'3')
+    v1 = self.snapshot.fields['vx1']
+    v2 = self.snapshot.fields['vx2']
+    v3 = self.snapshot.fields['vx3']
     if self.snapshot.geometry == 'SPHERICAL':
-      theta = self.snapshot.grid['x2']
-      phi = self.snapshot.grid['x3']
+      theta = self.snapshot.grids['x2']
+      phi = self.snapshot.grids['x3']
       v1, v2, v3 = self._from_sph(theta, phi, v1, v2, v3)
     elif self.snapshot.geometry == 'POLAR':
-      phi = self.snapshot.grid['x2']
+      phi = self.snapshot.grids['x2']
       v1, v2, v3 = self._from_cyl(phi, v1, v2, v3)
     else:
       raise KeyError('Only support geometry of [SPHERICAL] and [POLAR].')
@@ -96,13 +99,14 @@ class Field(object):
     code_length = self.snapshot.code_unit['code_length']
     code_density = self.snapshot.code_unit['code_density']
     code_velocity = self.snapshot.code_unit['code_velocity']
+    u.add_enabled_units([code_density, code_length, code_velocity])
     pluto_fields = PlutoFluidInfo.known_fields
     if self.snapshot.with_units:
       for key in self.primal_fields:
         self._cache[key] = self._cache[key].to(eval(pluto_fields[key][2]))
     else:
       for key in self.primal_fields:
-        self._cache[key] *= eval(pluto_fields[key][2])
+        self._cache[key] *= u.Unit(pluto_fields[key][2])
 
     self.update_derived_fields()
 

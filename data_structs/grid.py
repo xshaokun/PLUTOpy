@@ -19,9 +19,9 @@ class Grid(object):
 
   def __init__(self, snapshot):
     self.snapshot = snapshot
-    self.x1, self.x2, self.x3 = np.meshgrid(snapshot.coord['x1'], snapshot.coord['x2'], snapshot.coord['x3'])
-    self.dx1, self.dx2, self.dx3 = np.meshgrid(snapshot.coord['dx1'], snapshot.coord['dx2'], snapshot.coord['dx3'])
-    self.x1r, self.x2r, self.x3r = np.meshgrid(snapshot.coord['x1r'], snapshot.coord['x2r'], snapshot.coord['x3r'])
+    self.x1, self.x2, self.x3 = np.meshgrid(snapshot.coord['x1'], snapshot.coord['x2'], snapshot.coord['x3'], indexing='ij')
+    self.dx1, self.dx2, self.dx3 = np.meshgrid(snapshot.coord['dx1'], snapshot.coord['dx2'], snapshot.coord['dx3'], indexing='ij')
+    self.x1r, self.x2r, self.x3r = np.meshgrid(snapshot.coord['x1r'], snapshot.coord['x2r'], snapshot.coord['x3r'], indexing='ij')
     
     if snapshot.ndim !=3:
       for key in self.__slots__[4:13]:
@@ -80,13 +80,23 @@ class Grid(object):
     return x, y, z
 
 
-  def to_cart(self):
+  def to_cartesian(self):
+    ''' convert to cartesian coordinate system
+
+    Currently only support converting cell-centered coordinate (x1, x2, x3).
+
+    Returns:
+      tuple: the resulted three components
+    '''
+
     if self.snapshot.geometry == 'SPHERICAL':
-      self.x1, self.x2, self.x3 = self._from_sph(self.x1, self.x2, self.x3)
+      x1, x2, x3 = self._from_sph(self.x1, self.x2, self.x3)
     elif self.snapshot.geometry == 'POLAR':
-      self.x1, self.x2, self.x3 = self._from_cyl(self.x1, self.x2, self.x3)
+      x1, x2, x3 = self._from_cyl(self.x1, self.x2, self.x3)
     else:
       raise KeyError('Only support geometry of [SPHERICAL] and [POLAR].')
+
+    return x1, x2, x3
 
 
   def in_code_unit(self):

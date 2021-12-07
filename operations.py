@@ -1,21 +1,28 @@
 from .data_structs.dataset import Snapshot
 
 
-def to_cart(data):
+def to_cartesian(data):
   ''' convert to cartesian coordinate system
+
+  Currently only support converting:
+    grids['x1']
+    grids['x2']
+    grids['x3']
+    fields['vx1']
+    fields['vx2']
+    fields['vx3']
 
   Args:
     data (Snapshot): data needed to be converted geometry
 
   Returns:
     Snapshot: new Snapshot is as the same as the older one,
-              except for grid and velocity arrays have been transformed to cartesian system
-              (grid arrays only include cell-centered coordinates)
+              except for grids and velocity arrays have been transformed to cartesian system
   '''
 
   ds = data
-  ds.grid['x1'], ds.grid['x2'], ds.grid['x3'] = data.grid.to_cart('grid')
-  ds.fields['vx1'], ds.field['vx2'], ds.field['vx3'] = data.field.to_cart('velocity')
+  ds.grids['x1'], ds.grids['x2'], ds.grids['x3'] = data.grids.to_cartesian()
+  ds.fields['vx1'], ds.fields['vx2'], ds.fields['vx3'] = data.fields.to_cartesian()
 
   return ds
 

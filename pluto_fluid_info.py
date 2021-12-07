@@ -1,4 +1,5 @@
 import numpy as np
+import astropy.units as u
 
 
 def setup(cls):
@@ -18,7 +19,28 @@ class PlutoFluidInfo(object):
     'vx2'       :('vector', None, 'code_velocity',           'km/s'   , ['velocity-2'  ]),
     'vx3'       :('vector', None, 'code_velocity',           'km/s'   , ['velocity-3'  ]),
     'prs'       :('scalar', None, 'code_density*code_velocity**2',   'erg/cm**3',  ['pressure'  ]),
+    'tr1'       :('scalar', None, '',    '', ['tracer-1']),
+    'tr2'       :('scalar', None, '',    '', ['tracer-2']),
+    'tr3'       :('scalar', None, '',    '', ['tracer-3']),
+    'tmp'       :('scalar', None, 'K',   'K',  ['temperature'  ]),
+    'phi'       :('scalar', None, 'code_velocity**2',   'km**2/s**2',  ['potential'  ]),
   }
+
+  @classmethod
+  def type(cls, field):
+    return cls.known_fields[field][0]
+
+  @classmethod
+  def function(cls, field):
+    return cls.known_fields[field][1]
+
+  @classmethod
+  def code_unit(cls, field):
+    return cls.known_fields[field][2]
+
+  @classmethod
+  def astro_unit(cls, field):
+    return cls.known_fields[field][3]
 
   @classmethod
   def show(cls):
@@ -68,7 +90,13 @@ class PlutoFluidInfo(object):
       alias=['speed']
     )
 
+# Above predefine some in-built derived field functions
+
 add_field = PlutoFluidInfo.add_field
 
 def derived_field(name, type, **kwargs):
   return add_field(name, type, kwargs)
+
+
+class field_register(object):
+  pass

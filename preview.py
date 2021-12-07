@@ -5,18 +5,20 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from astropy.visualization import quantity_support
+quantity_support()
 
-from pluto_def_constants import PlutoDefConstants
-from pluto_fluid_info import PlutoFluidInfo
-from data_structs import Dataset, Snapshot
-from operations import to_cart, slice2d, slice1d
+from PLUTOpy.pluto_def_constants import PlutoDefConstants
+from PLUTOpy.pluto_fluid_info import PlutoFluidInfo
+from PLUTOpy.data_structs.dataset import Dataset, Snapshot
+from PLUTOpy.operations import to_cartesian, slice2d, slice1d
 
 
 class Preview(object):
   ''' Class for previewing data results.
 
   Args:
-    wdir (str): absolute path to the dirctory.
+    code_dir (str): absolute path to the dirctory.
     datatype (str): type of data files. Default is 'vtk'.
   '''
 
@@ -24,9 +26,11 @@ class Preview(object):
   mpl.rcParams['mathtext.fontset'] = 'cm'
   mpl.rcParams['font.family'] = 'serif'
 
-  def __init__(self, wdir='./', datatype='vtk'):
-    self.wdir = os.path.abspath(wdir)+'/'
+  def __init__(self, code_dir='./', init_file='pluto.ini', datatype='dbl', with_units=False):
+    self.code_dir = os.path.abspath(code_dir)+'/'
+    self.init_file= init_file
     self.datatype = datatype
+    self.with_units = with_units
 
     self.fig = plt.figure(figsize=(5,4), tight_layout=True)
 
@@ -37,7 +41,7 @@ class Preview(object):
     return plt.show()
 
 
-  def save(self, name=None, path='./', **kwargs):
+  def save(self, name=None, path=None, **kwargs):
     ''' save figure
 
     Args:
@@ -48,7 +52,8 @@ class Preview(object):
       jpg file: with name of 'name-model.jpg', model is name of dirctory
     '''
 
-    model = self.wdir.split('/')[-2]
+    if path is None: path = self.output_dir
+    model = path.split('/')[-2]
     if name is None:
       plt.savefig(path+f'{self.field}{self.index}-{model}.jpg',bbox_inches='tight', pad_inches=0.02, dpi=kwargs.get('dpi',300))
     else:
@@ -68,7 +73,7 @@ class Preview(object):
       x3 (float): (optional) rough coordinate
 
     **kwargs:
-      wdir (str): path to the directory which has the data files
+      code_dir (str): path to the directory which has the data files
       datatype (str): type of data files. Default is 'vtk'.
       vmin (float): The minimum value of the 2D array (Default : min(field))
       vmax (float): The maximum value of the 2D array (Default : max(field))
@@ -77,46 +82,44 @@ class Preview(object):
       size (float): fontsize of title
     '''
 
-    ds = Dataset(w_dir=kwargs.get('wdir', self.wdir), datatype=kwargs.get('datatype', self.datatype))
+    ds = Dataset(code_dir=kwargs.get('code_dir', self.code_dir), init_file=kwargs.get('init_file', self.init_file), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
+    self.output_dir = ds.output_dir
     ss = ds[ns]
     self.field = field
     self.index = ss.nstep
 
     if ss.geometry != 'CARTESIAN':
-      ss = to_cart(ss)
-
-    if kwargs.get('in_astro_unit'):
-      ss.in_astro_unit()
+      ss = to_cartesian(ss)
 
     offset = [x1,x2,x3]
     label = ['x1','x2','x3']
 
     if ss.ndim==3:
-      arr = ss.slice2d(field, x1=x1, x2=x2, x3=x3)
+      arr = ss.slice2d('fields', field, x1=x1, x2=x2, x3=x3)
       for i in range(3):  # find the dirction
         if offset[i] is not None:
           dim = 'x'+str(i+1)
           label.remove(dim)
           break
-      x1 = ss.coord[label[0]]
-      x2 = ss.coord[label[1]]
+      x = ss.slice2d('grids', label[0], x1=x1, x2=x2, x3=x3)
+      y = ss.slice2d('grids', label[1], x1=x1, x2=x2, x3=x3)
     elif ss.ndim==2:
       arr = ss.fields[field]
-      x1 = ss.grid['x1']
-      x2 = ss.grid['x3']
+      x = ss.grids['x1']
+      y = ss.grids['x3']
 
     ax1 = self.fig.add_subplot(111)
     ax1.set_aspect('equal')
-    if ss.is_quantity:  # pcolormesh does not support Quantity
-      x1 = x1.value
-      x2 = x2.value
+    if ss.with_units:  # pcolormesh does not support Quantity
+      x = x.value
+      y = y.value
       arr = arr.value
-    ax1.axis([np.amin(x1),np.amax(x1),np.amin(x2),np.amax(x2)])
+    ax1.axis([np.amin(x),np.amax(x),np.amin(y),np.amax(y)])
     if log:
-      pcm = ax1.pcolormesh(x1,x2,arr,vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax'), \
-        cmap=kwargs.get('cmap'), shading='auto', norm=mpl.colors.LogNorm())
+      pcm = ax1.pcolormesh(x,y,arr,\
+        cmap=kwargs.get('cmap'), shading='auto', norm=mpl.colors.LogNorm(vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax')))
     else:
-      pcm = ax1.pcolormesh(x1,x2,arr,vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax'), \
+      pcm = ax1.pcolormesh(x,y,arr,vmin=kwargs.get('vmin'),vmax=kwargs.get('vmax'), \
         cmap=kwargs.get('cmap'), shading='auto')
 
     plt.title(kwargs.get('title',f't = {ss.time:.3e}'),size=kwargs.get('size'))
@@ -147,13 +150,14 @@ class Preview(object):
       x3 (float): (optional) rough coordinate
 
     **kwargs:
-      wdir (str): path to the directory which has the data files
+      code_dir (str): path to the directory which has the data files
       datatype (str): type of data files. Default is 'vtk'.
       xlog (bool): set x-axis in log scale
       ylog (bool): set x-axis in log scale
     '''
 
-    ds = Dataset(w_dir=kwargs.get('wdir', self.wdir), datatype=kwargs.get('datatype', self.datatype))
+    ds = Dataset(code_dir=kwargs.get('code_dir', self.code_dir), init_file=kwargs.get('init_file', self.init_file), datatype=kwargs.get('datatype', self.datatype), with_units=kwargs.get('with_units', self.with_units))
+    self.output_dir = ds.output_dir
     ss = ds[ns]
     self.field = field
     self.index = ss.nstep
@@ -165,7 +169,7 @@ class Preview(object):
         x = ss.coord[dim]
         break
 
-    value = ss.slice1d(field,x1=x1,x2=x2,x3=x3)
+    value = ss.slice1d('fields',field,x1=x1,x2=x2,x3=x3)
 
     plt.plot(x, value, label=f't={ss.time:.3e}')
 
@@ -179,23 +183,23 @@ class Preview(object):
     return self
 
 
-  def hist(self, *var, op=None, **kwargs):  # in construction
-    ''' Preview temperal evolution stored in hist.dat file '''
+  def hist(self, *var, file_name='hist.out', operate=None, **kwargs):  # in construction
+    ''' Preview temperal evolution stored in hist.out file '''
 
-    hist = pd.read_csv(self.wdir+'hist.dat', sep='\s+', index_col='t')
+    hist = pd.read_csv(self.code_dir+'hist.out', sep='\s+', index_col='t')
     hist = hist[list(var)]
 
-    if op is None:
+    if operate is None:
       ax = plt.plot(hist)
       plt.legend(ax,var)
-    elif op == 'diff':
+    elif operate == 'diff':
       ax = plt.plot(hist-hist.iloc[[0]].values)
       plt.legend(ax,[f'{v}-{v}(0)' for v in var])
-    elif op == 'norm':
+    elif operate == 'norm':
       ax = plt.plot(hist/hist.iloc[[0]].values)
       plt.legend(ax,[f'{v}/{v}(0)' for v in var])
     else:
-      raise KeyError(f'Operation [{op}] has not defined yet.')
+      raise KeyError(f'Operation [{operate}] has not defined yet.')
 
     plt.title(kwargs.get('title','Title'),size=kwargs.get('size'))
     plt.xlabel(kwargs.get('label1','Time (code unit)'),size=kwargs.get('size'))

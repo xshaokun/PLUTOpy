@@ -5,7 +5,7 @@ import pyPLUTO.pload as pp
 
 from ..pluto_def_constants import PlutoDefConstants
 from ..pluto_fluid_info import PlutoFluidInfo
-from ..utilities.tools import nearest 
+from ..utilities.tools import nearest
 from .grid import Grid
 from .field import Field
 
@@ -14,12 +14,13 @@ class Dataset(object):
   ''' Pluto data work directory
 
   Args:
-    w_dir (str): path to the directory where data files locate. Default is './'.
-    datatype (str): type of data files. Default is 'vtk'.
+    code_dir (str): path to the directory where data files locate. Default is './'.
+    datatype (str): type of data files. Default is 'dbl'.
     init_file (str): init file including the parameters for simulation. Default is 'pluto.ini'.
 
   Attributes:
-    wdir (str): absolute path to the dirctory.
+    code_dir (str): absolute path to the dirctory.
+    output_dir (str): 
     init_file (str):
     datatype (str):
     filetype (str):
@@ -35,7 +36,8 @@ class Dataset(object):
   '''
 
   __slots__=[
-    'wdir',
+    'code_dir',
+    'output_dir',
     'init_file',
     'datatype',
     'filetype',
@@ -50,13 +52,20 @@ class Dataset(object):
     '__ds'
   ]
 
-  def __init__(self, w_dir='./', datatype='vtk', init_file='pluto.ini', with_units=False):
-    self.wdir = os.path.abspath(w_dir) + '/'
+  def __init__(self, code_dir='./', datatype='dbl', init_file='pluto.ini', with_units=False):
+    self.code_dir = os.path.abspath(code_dir) + '/'
     self.init_file = init_file
+    self.output_dir = self.code_dir
     self.datatype = datatype
     self.with_units = with_units
 
-    varfile = self.wdir+self.datatype+'.out'
+    with open(self.code_dir+self.init_file, 'r') as f:
+      for line in f.readlines():
+        if 'output_dir' in line:
+          output_dir = line.split()[-1].splitlines()[0] + '/'
+          self.output_dir = self.code_dir + output_dir
+
+    varfile = self.output_dir+self.datatype+'.out'
     with open(varfile,'r') as vfp:
       varinfo = vfp.read().splitlines()
       lastline = varinfo[-1].split()
@@ -77,8 +86,9 @@ class Dataset(object):
       'code_velocity': u.cm/u.s
     }
 
-    if 'definitions.h' in os.listdir(self.wdir):
-      with open(self.wdir+'definitions.h','r') as df:
+    # Import settings from definitions.h
+    if 'definitions.h' in os.listdir(self.code_dir):
+      with open(self.code_dir+'definitions.h','r') as df:
         for line in df.readlines():
           if line.startswith('#define  GEOMETRY'):
             self.geometry = line.split()[-1]
@@ -102,14 +112,27 @@ class Dataset(object):
         new_value = input(f'Specify the value of [{key.upper}] in cgs unit system: (default is 1.0)') or 1.0
         self.code_unit[key] = new_value * value
 
+    # Initialize code units
     for key, value in self.code_unit.items():
       self.code_unit[key] = u.Unit(key, represents=value)
 
+    # Given some commonly-used units
+    code_density = self.code_unit['code_density']
+    code_length = self.code_unit['code_length']
+    code_velocity = self.code_unit['code_velocity']
+    u.add_enabled_units([code_density, code_length, code_velocity])
+    self.code_unit['code_time'] = code_length/code_velocity
+    self.code_unit['code_pressure'] = code_density*code_velocity*code_velocity
+    self.code_unit['code_energy'] = self.code_unit['code_pressure']*code_length**3
+    self.code_unit['code_power'] = self.code_unit['code_energy']/self.code_unit['code_time']
+    self.code_unit['code_mass'] = code_density*code_length**3
+    self.code_unit['code_momentum'] = self.code_unit['code_mass']*code_velocity
+    self.code_unit['code_force'] = self.code_unit['code_pressure']*code_length*code_length
 
   def __getitem__(self, index):
     # index: int or time
     ns = self._number_step(index)
-    ds = Snapshot(ns, w_dir=self.wdir, datatype=self.datatype, init_file=self.init_file, with_units=self.with_units)
+    ds = Snapshot(ns, code_dir=self.code_dir, datatype=self.datatype, init_file=self.init_file, with_units=self.with_units)
     return ds
 
 
@@ -128,8 +151,8 @@ class Dataset(object):
           it is assumed to be time, and return the nearst number step
     '''
 
-    hdr = ['time','dt','Nstep']
-    log_file = pd.read_table(self.wdir+self.datatype+'.out',sep=' ', usecols=[1,2,3], names=hdr)
+    hdr = ['nfile','time','dt','Nstep']
+    log_file = pd.read_table(self.output_dir+self.datatype+'.out',sep=' ', usecols=[0,1,2,3], names=hdr, index_col=0)
 
     if type(ns) is int:
       if ns < 0:
@@ -181,10 +204,10 @@ class Snapshot(Dataset):
     'fields'
   ]
 
-  def __init__(self, ns, w_dir, datatype,init_file, with_units):
-    super().__init__(w_dir, datatype, init_file, with_units)
+  def __init__(self, ns, code_dir, datatype,init_file, with_units):
+    super().__init__(code_dir, datatype, init_file, with_units)
 
-    ds = pp.pload(ns, w_dir=self.wdir, datatype=self.datatype)
+    ds = pp.pload(ns, w_dir=self.output_dir, datatype=self.datatype)
     self.nstep = ds.NStep
     self.time = ds.SimTime
     self.dt = ds.Dt
@@ -223,7 +246,9 @@ class Snapshot(Dataset):
     for attr in self.__slots__:
       if hasattr(self, attr):
         value = getattr(self, attr)
-        if not type(value) is dict:
+        if type(value) is dict:
+          print(f'{attr:15}:  {value.keys()}')
+        else:
           print(f'{attr:15}:  {value}')
 
 
@@ -280,12 +305,13 @@ class Snapshot(Dataset):
     self.dt = self.dt.to(u.yr)
 
 
-  def slice2d(self, field, x1=None, x2=None, x3=None):
+  def slice2d(self, type, field, x1=None, x2=None, x3=None):
     ''' Slice 3-D array and return 2-D array
 
     coordinate of one dimension should be specified
 
     Args:
+      type: (str): grids or fields
       field (str): output variable name listed in attribute `field_list`
       x1 (float): rough coordinate (optional)
       x2 (float): rough coordinate (optional)
@@ -308,16 +334,17 @@ class Snapshot(Dataset):
         break
       i+=1
     index = str(offset).replace('None',':')
-    arr = eval('self.fields[field]' + index)
+    arr = eval(f'self.{type}["{field}"]{index}')
     return arr
 
 
-  def slice1d(self, field, x1=None, x2=None, x3=None):
+  def slice1d(self, type, field, x1=None, x2=None, x3=None):
     ''' Slice 3-D array and return 1-D array
 
     coordinates of two dimensions should be specified
 
     Args:
+      type (str): grids or fields
       field (str): output variable name listed in attribute `field_list`
       x1 (float): rough coordinate (optional)
       x2 (float): rough coordinate (optional)
@@ -345,6 +372,6 @@ class Snapshot(Dataset):
       else:
         offset[i] = None
       i+=1
-    index = str(offset[::-1]).replace('None',':')
-    arr = eval('self.fields[field]'+index)
+    index = str(offset).replace('None',':')
+    arr = eval(f'self.{type}["{field}"]{index}')
     return arr
