@@ -28,7 +28,7 @@ class Field(object):
     if name in self.cache_list:
       return self._cache[name]
     elif name in self.derived_fields:
-      f = PlutoFluidInfo.known_fields[name][1]
+      f = PlutoFluidInfo.function(name)
       self.cache_list.append(name)
       self._cache[name] = f(self.snapshot)
       return self._cache[name]
@@ -49,7 +49,7 @@ class Field(object):
     pluto_fields = PlutoFluidInfo.known_fields
     derived_cache_list = list(set(self.cache_list) - set(self.primal_fields))
     for key in derived_cache_list:
-      f = PlutoFluidInfo.known_fields[key][1]
+      f = PlutoFluidInfo.function(key)
       self._cache[key] = f(self.snapshot).to(u.Unit(pluto_fields[key][3]))
 
   @staticmethod
